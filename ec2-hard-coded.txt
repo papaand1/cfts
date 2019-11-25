@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"  
+Resources:  
+  WebInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      DisableApiTermination: true
+      InstanceType: t2.nano
+      ImageId: ami-80861296
+      KeyName: my-key
+      Monitoring: true
+      SecurityGroupIds:
+        - sg-abc01234
+      SubnetId: subnet-abc01234
+      Tags:
+        - Key: Name
+          Value: webserver
+        - Key: Contact
+          Value: papa		  
+# Increase root partition          
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeSize: 24
+            VolumeType: gp2	  
+# add additional storage
+        - DeviceName: "/dev/sdf"
+          Ebs:
+            VolumeSize: 64
+            VolumeType: gp2	
+# add EIP            
+  WebElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref WebInstance
+      Domain: vpc
+
+# or	  
+  IPAddress:
+    Type: 'AWS::EC2::EIP'
+  IPAssoc:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      InstanceId: !Ref WebInstance
+      EIP: !Ref IPAddress		  

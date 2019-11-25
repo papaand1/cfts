@@ -1,0 +1,8 @@
+#! /usr/bin/env bash
+yum update -y
+useradd cherif
+echo "P@ssW0rd" | passwd cherif --stdin
+echo "#granting user cherif root privileges" >> /etc/sudoers
+echo "cherif  ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+service sshd restart
