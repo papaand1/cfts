@@ -1,0 +1,534 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a VPC with public and private subnets
+Parameters:
+  AvailabilityZone1:
+    Type: String
+    Default: us-east-1a  
+  AvailabilityZone2:
+    Type: String
+    Default: us-east-1b
+  AvailabilityZone3:
+    Type: String
+    Default: us-east-1c
+  AvailabilityZone4:
+    Type: String
+    Default: us-east-1d
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: Dev   
+    AllowedValues:
+    - Prod
+    - Dev
+    - QA 
+  EmployeeID:
+    Description: EmployeeID
+    Type: String
+    Default: Dev     
+  EmployeeContact:
+    Description: Contact of the Employee 
+    Type: String
+    Default: Dev     
+  LOB:
+    Description: Line of business
+    Type: String
+    Default: DEVOPS     
+    AllowedValues:
+    - DBA
+    - DEVOPS
+    - SYSADMIN
+    - CLOUD 
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.  
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large 
+  SSHLocation1:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  SSHLocation2:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.    
+  OperatorEMail:
+    Description: EMail address to notify if there are any scaling operations
+    Type: String
+    Default: papa@yahoo.com
+    AllowedPattern: >-
+      ([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)
+    ConstraintDescription: must be a valid email address.
+  Username:
+    Description: >-
+      The user name that is associated with the master user account for the
+      cluster that is being created
+    Type: String
+    Default: root
+    AllowedPattern: '([a-z])([a-z]|[0-9])*'
+  Password:
+    Description: >-
+      The password that is associated with the master user account for the
+      cluster that is being created.
+    Type: String
+    Default: TaeJ2eez
+    NoEcho: 'true'    
+Mappings:
+  Region2Examples:
+    us-east-1:
+      Examples: 'https://s3.amazonaws.com/cloudformation-examples-us-east-1'
+    us-west-2:
+      Examples: 'https://s3-us-west-2.amazonaws.com/cloudformation-examples-us-west-2'
+    us-west-1:
+      Examples: 'https://s3-us-west-1.amazonaws.com/cloudformation-examples-us-west-1'
+  AWSInstanceType2Arch:
+    t1.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+  AWSInstanceType2NATArch:
+    t1.micro:
+      Arch: NATHVM64
+    t2.nano:
+      Arch: NATHVM64
+    t2.micro:
+      Arch: NATHVM64
+    t2.small:
+      Arch: NATHVM64
+    t2.medium:
+      Arch: NATHVM64
+    t2.large:
+      Arch: NATHVM64   
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-0080e4c5bc078760e
+      HVMG2: ami-0aeb704d503081ea6
+    us-west-2:
+      HVM64: ami-01e24be29428c15b2
+      HVMG2: ami-0fe84a5b4563d8f27      
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.34.0.0/16
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone1
+      CidrBlock: 172.34.1.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-VPCA'
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'       
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone2
+      CidrBlock: 172.34.3.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC      
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone3
+      CidrBlock: 172.34.2.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone4
+      CidrBlock: 172.34.4.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC     
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  PublicRouteTable:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+  PublicRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+  PublicRouteAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+#ASG
+  NotificationTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      Subscription:
+        - Endpoint: !Ref OperatorEMail
+          Protocol: email
+  WebServerGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB  
+      LaunchConfigurationName: !Ref LaunchConfig
+      MinSize: '1'
+      MaxSize: '3'
+      LoadBalancerNames: !Ref MyLoadBalancer
+      NotificationConfiguration:
+        TopicARN: !Ref NotificationTopic
+        NotificationTypes:
+          - 'autoscaling:EC2_INSTANCE_LAUNCH'
+          - 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR'
+          - 'autoscaling:EC2_INSTANCE_TERMINATE'
+          - 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+        Count: '1'
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: '1'
+        MaxBatchSize: '1'
+        PauseTime: PT15M
+        WaitOnResourceSignals: 'false'
+  LaunchConfig:
+    Type: 'AWS::AutoScaling::LaunchConfiguration' 
+    Properties:
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch      
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      InstanceType: !Ref InstanceType 
+      IamInstanceProfile: !Ref SESAccessInstanceProfile      
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          #yum update -y
+          yum install httpd -y
+          service httpd start
+          chkconfig httpd on
+          iptables -I INPUT -m tcp -p tcp --dport 80 -j ACCEPT
+          iptables -I INPUT -m tcp -p tcp --dport 443 -j ACCEPT
+          service iptables save
+          service iptables restart
+          useradd cherif
+          echo "P@ssW0rd" | passwd cherif --stdin
+          echo "#granting user cherif root privileges" >> /etc/sudoers
+          echo "cherif  ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+          sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          service sshd restart      
+  WebServerScaleUpPolicy:
+    Type: 'AWS::AutoScaling::ScalingPolicy'
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref WebServerGroup
+      Cooldown: '60'
+      ScalingAdjustment: '1'
+  WebServerScaleDownPolicy:
+    Type: 'AWS::AutoScaling::ScalingPolicy'
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref WebServerGroup
+      Cooldown: '60'
+      ScalingAdjustment: '-1'
+  CPUAlarmHigh:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale-up if CPU > 70% for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: '300'
+      EvaluationPeriods: '2'
+      Threshold: '70'
+      AlarmActions:
+        - !Ref WebServerScaleUpPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref WebServerGroup
+      ComparisonOperator: GreaterThanThreshold
+  CPUAlarmLow:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale-down if CPU < 50% for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: '300'
+      EvaluationPeriods: '2'
+      Threshold: '50'
+      AlarmActions:
+        - !Ref WebServerScaleDownPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref WebServerGroup
+      ComparisonOperator: LessThanThreshold
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access and HTTP from the load balancer only
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref SSHLocation1
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref SSHLocation2          
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0          
+      VpcId: !Ref VPC 
+####ELB
+MyLoadBalancer:
+  Type: AWS::ElasticLoadBalancing::LoadBalancer
+  Properties:
+    AvailabilityZones:
+        - !Ref AvailabilityZone1
+        - !Ref AvailabilityZone2
+    CrossZone: 'true'
+    SecurityGroups: !Ref ALBSecurityGroup  
+    Listeners:
+    - LoadBalancerPort: '80'
+      InstancePort: '80'
+      Protocol: HTTP
+    HealthCheck:
+      Target: HTTP:80/
+      HealthyThreshold: '3'
+      UnhealthyThreshold: '5'
+      Interval: '30'
+      Timeout: '5'
+####sgS      
+  ALBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access and HTTP from the load balancer only
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0 
+      VpcId: !Ref VPC  
+#IAM public
+  SESAccessInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref SESAccessRole
+  SESAccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: SESAccessPolicy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: [
+            "ses:*",
+            "route53:*",
+            "sqs:*"
+            ]
+            Resource: '*'
+      Roles:
+        - !Ref SESAccessRole
+  SESAccessRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /   
+#IAM private
+  S3AccessInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref S3AccessRole
+  S3AccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: S3AccessPolicy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: [
+            "sns:*",
+            "s3:*",
+            "sqs:*"
+            ]
+            Resource: '*'
+      Roles:
+        - !Ref S3AccessRole
+  S3AccessRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /       
+#Aurora cluster
+  RDSSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable aurora  access from public EC2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup          
+      VpcId: !Ref VPC  
+  RdsSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: RdsSubnetGroup
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB 
+  RdsAuroraCluster:
+    Type: 'AWS::RDS::DBCluster'
+    Properties:
+      Engine: aurora
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      DBClusterParameterGroupName: !Ref RdsAuroraClusterParameterGroup
+      MasterUsername: !Ref Username
+      MasterUserPassword: !Ref Password
+      VpcSecurityGroupIds:
+        - !Ref RDSSecurityGroup      
+    DeletionPolicy: Delete
+  RdsAuroraInstance1:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      DBParameterGroupName: !Ref RdsAuroraParameterGroup
+      Engine: aurora
+      DBClusterIdentifier: !Ref RdsAuroraCluster
+      PubliclyAccessible: 'false'
+      AvailabilityZone: !Ref AvailabilityZone3
+      DBInstanceClass: db.t2.medium
+  RdsAuroraInstance2:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      DBParameterGroupName: !Ref RdsAuroraParameterGroup
+      Engine: aurora
+      DBClusterIdentifier: !Ref RdsAuroraCluster
+      PubliclyAccessible: 'false'
+      AvailabilityZone: !Ref AvailabilityZone3
+      DBInstanceClass: db.t2.medium
+  RdsAuroraInstance3:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      DBParameterGroupName: !Ref RdsAuroraParameterGroup
+      Engine: aurora
+      DBClusterIdentifier: !Ref RdsAuroraCluster
+      PubliclyAccessible: 'false'
+      AvailabilityZone: !Ref AvailabilityZone3
+      DBInstanceClass: db.t2.medium
+  RdsAuroraInstace4:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      DBParameterGroupName: !Ref RdsAuroraParameterGroup
+      Engine: aurora
+      DBClusterIdentifier: !Ref RdsAuroraCluster
+      PubliclyAccessible: 'false'
+      AvailabilityZone: !Ref AvailabilityZone3
+      DBInstanceClass: db.t2.medium      
+  RdsAuroraClusterParameterGroup:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: RdsAuroraClusterParameterGroup
+      Family: aurora5.6
+      Parameters:
+        time_zone: UTC
+  RdsAuroraParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: RdsAuroraParameterGroup
+      Family: aurora5.6
+      Parameters:
+        sql_mode: IGNORE_SPACE
+        performance_schema: '1'
+        interactive_timeout: '180'
+        log_bin_trust_function_creators: '1'
+        log_queries_not_using_indexes: '0'
+        long_query_time: '1'
+        slow_query_log: '1'
+        wait_timeout: '180'
+        innodb_print_all_deadlocks: '1'
+        max_connect_errors: '10000'    
+        

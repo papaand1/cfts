@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a VPC with public and private subnets
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+  EmployeeID:
+    Description: EmployeeID
+    Type: String
+  EmployeeContact:
+    Description: Contact of the Employee 
+    Type: String
+  LOB:
+    Description: Line of business
+    Type: String
+    AllowedValues:
+    - DBA
+    - DEVOPS
+    - SYSADMIN
+    - CLOUD    
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+    - t1.micro
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium 
+  SSHLocation: 
+    Description: Subnet allowed to ssh on TCP to public subnet
+    Type: String    
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/0-28
+    Default: 0.0.0.0/0
+    MinLength: '9'
+    MaxLength: '18'    
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.101.0/24
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-test-VPC'
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'           
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
+      CidrBlock: 192.168.101.0/28
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-public-subnet'     
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'           
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
+      CidrBlock: 192.168.101.32/28
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-private-subnet'  
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'           
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  PublicRouteTable:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+  PublicRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: ssh access to the instance
+      SecurityGroupIngress:
+        - CidrIp: !Ref SSHLocation
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EC2'    
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'           
+  DBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Access to the DB from EC2
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref InstanceSecurityGroup
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-RDS'
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'  
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch 
+      UserData:
+        Fn::BAse64: |
+          #! /usr/bin/env bash
+          yum update -y
+          useradd cherif
+          echo "P@ssW0rd" | passwd cherif --stdin
+          echo "#granting user cherif root privileges" >> /etc/sudoers
+          echo "cherif  ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+          sed -i "s/.*PasswordAuthentication.*/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          service sshd restart
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-RDS'
+        - Key: EmployeeID
+          Value: !Sub '${EmployeeID}'  
+        - Key: EmployeeContact
+          Value: !Sub '${EmployeeContact}' 
+        - Key: LOB
+          Value: !Sub '${LOB}'          
+Outputs:
+  DBSecurityGroup:
+    Description: A reference to the security group for DB host
+    Value: !Ref DBSecurityGroup
+  InstanceSecurityGroup:
+    Description: A reference to the security group EC2
+    Value: !Ref InstanceSecurityGroup  
+  PublicDNS:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt [EC2Instance, PublicDnsName]
+  PublicIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt [EC2Instance, PublicIp]
+    
+  VPC:
+    Description: A reference to the VPC
+    Value: !Ref VPC 
+  PublicSubnetA:
+    Description: A reference to the public subnet
+    Value: !Ref PublicSubnetA
+  PrivateSubnetA:
+    Description: A reference to the public subnet
+    Value: !Ref PrivateSubnetA    
+    
