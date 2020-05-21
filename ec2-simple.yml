@@ -2,11 +2,11 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Create An EC2 instance
 Parameters:
   Subnet:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Description: Name of an existing Subnet
     Type: AWS::EC2::Subnet::Id
     ConstraintDescription: must be the name of an existing Subnet.
   InstanceSecurityGroup:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Description: Name of an existing Security groups
     Type: AWS::EC2::SecurityGroup::Id
     ConstraintDescription: must be the name of an existing Subnet.    
   EnvironmentName:
