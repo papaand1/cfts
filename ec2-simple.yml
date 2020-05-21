@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates a VPC with public and private subnets
+Description: Create An EC2 instance
 Parameters:
   Subnet:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
