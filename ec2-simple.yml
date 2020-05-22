@@ -26,10 +26,10 @@ Parameters:
     Description: Line of business
     Type: String
     AllowedValues:
-    - DBA
-    - DEVOPS
-    - SYSADMIN
-    - CLOUD    
+    - FAWS
+    - Azure
+    - GCP
+    - DCOPS    
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
