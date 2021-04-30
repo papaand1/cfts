@@ -1,0 +1,421 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy QA environment
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    AllowedValues:
+    - dev
+    - qa
+    - pre-prod
+    - prod
+    - mng
+  POC:
+    Description: POC
+    Type: String
+    AllowedValues:
+    - cherif.lawani@hendall.com
+  Team:
+    Description: Line of business
+    Type: String
+    Default: CLOUDADMIN
+    AllowedValues:
+    - DBA
+    - DEVOPS
+    - SYSADMIN
+    - CLOUDADMIN   
+  Offhours:
+    Description: If the resource will run after hours
+    Type: String
+    Default: false    
+    AllowedValues:
+    - true
+    - false 
+  PeerVPCId:
+    Description: peering VPC ID
+    Type: String
+    AllowedValues:
+    - vpc-0c251eb331ec15cbf 
+  PeerVPCAccountId:
+    Description: peering VPC Account ID
+    Type: String
+    AllowedValues:
+    - 896451486235
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.xlarge
+    AllowedValues:
+    - t2.large
+    - t2.xlarge
+    - t2.medium    
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.	
+  DBInstanceType:
+    Description: DB instance type
+    Type: String
+    Default: db.m6g.large
+    AllowedValues:
+    - db.m6g.large
+    - db.m6g.xlarge
+  DBName:
+    Description: DB Name
+    Type: String 
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.    
+  DBUsername :
+    Description: DB User Name
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.    
+  DBPassword:
+    Description: DB Password
+    Type: String
+    NoEcho: true
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.    
+   
+Resources:
+######VPC creation
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.3.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc'
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.3.0.0/19
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-public-1-subnet'    
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: 10.3.224.0/19
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-public-2-subnet'            
+  PresentationPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.3.32.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-presentation-1-subnet'      
+  PresentationPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: 10.3.64.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-presentation-2-subnet'   
+  ApplicationPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.3.96.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-application-1-subnet'      
+  ApplicationPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: 10.3.128.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-application-2-subnet'   
+  DataPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.3.160.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-data-1-subnet'      
+  DataPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: 10.3.192.0/19
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-data-2-subnet'            
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-internet-gateway' 
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  PublicRouteTable:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-public-rt'  
+  PrivateRouteTable:
+    DependsOn: AttachGateway
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-private-rt'           
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable      
+  PublicRouteAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA      
+  PublicRouteAssociationB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB	
+#VPC peering      
+  vpcPeeringConnection:
+    Type: 'AWS::EC2::VPCPeeringConnection'
+    Properties:
+      VpcId: !Ref VPC
+      PeerVpcId: !Sub '${PeerVPCId}'
+      PeerOwnerId: !Sub '${PeerVPCAccountId}'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-mngt-${EnvironmentName}-pc'
+      #PeerRoleArn: !Ref PeerRoleArn
+# SGs creation      
+  SSHSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allow ssh from the bastion host
+      GroupName: !Sub 'bhsis-ssh-${EnvironmentName}-sg' 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: sg-0276f0340b7a180a5
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+        - CidrIp: 172.27.224.0/20
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'          
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-ssh-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'
+  Web01SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allow Web traffic from the ALB
+      GroupName: !Sub 'bhsis-web-${EnvironmentName}-sg' 
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'          
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-web-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'  
+  App01SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allow  traffic from the web application servers
+      GroupName: !Sub 'bhsis-app-01-${EnvironmentName}-sg' 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref Web01SecurityGroup
+          IpProtocol: tcp
+          FromPort: '9000'
+          ToPort: '9100'         
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-app-01-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}' 
+  App02SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allow traffic from the web application servers
+      GroupName: !Sub 'bhsis-app-02-${EnvironmentName}-sg' 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref Web01SecurityGroup
+          IpProtocol: tcp
+          FromPort: '6311'
+          ToPort: '6311'         
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-app-02-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'  
+  ldap01SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allow ldap traffic from the application servers
+      GroupName: !Sub 'bhsis-ldap-01-${EnvironmentName}-sg' 
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref App01SecurityGroup
+          IpProtocol: tcp
+          FromPort: '389'
+          ToPort: '389'  
+        - SourceSecurityGroupId: !Ref App02SecurityGroup
+          IpProtocol: tcp
+          FromPort: '389'
+          ToPort: '389'          
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-ldap-01-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'                     
+#DB SG
+  DatabaseSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow traffic from the application servers and from VPN
+      GroupName: !Sub 'bhsis-db-01-${EnvironmentName}-sg'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref App01SecurityGroup
+          IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'   
+        - SourceSecurityGroupId: !Ref App02SecurityGroup
+          IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'
+        - CidrIp: 10.0.0.72/32
+          IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432' 
+        - CidrIp: 54.236.211.122/32
+          IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'  
+        - CidrIp: 172.27.224.0/20
+          IpProtocol: tcp
+          FromPort: '5432'
+          ToPort: '5432'           
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-db-01-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'          
+#DBsubnetgroup          
+  PostGresDBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: !Sub 'bhsis-${EnvironmentName}-vpc-subnet-group'
+      SubnetIds: 
+        - !Ref DataPrivateSubnet1 
+        - !Ref DataPrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-${EnvironmentName}-vpc-subnet-group'
+#DB instance      
+  DBInstance:
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot  
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: !Sub 'bhsis-db-02-${EnvironmentName}'
+      DBName: !Ref DBName
+      AllocatedStorage: "100"
+      StorageEncrypted: true
+      StorageType: gp2 
+      KmsKeyId: ac5ff7a0-d80f-43fe-a0a8-64b579943da0      
+      DBInstanceClass: !Ref DBInstanceType
+      Engine: "postgres"
+      EngineVersion: "12.5"
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref PostGresDBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      MultiAZ: false 
+      DeletionProtection: false
+      EnablePerformanceInsights: true
+      PerformanceInsightsKMSKeyId: ac5ff7a0-d80f-43fe-a0a8-64b579943da0
+      PerformanceInsightsRetentionPeriod: 7
+      BackupRetentionPeriod: 14
+      CopyTagsToSnapshot: true
+      AutoMinorVersionUpgrade: true
