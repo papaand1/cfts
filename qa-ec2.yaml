@@ -1,0 +1,369 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy QA environment
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    AllowedValues:
+    - dev
+    - qa
+    - pre-prod
+    - prod
+    - mng
+  POC:
+    Description: POC
+    Type: String
+    AllowedValues:
+    - cherif.lawani@hendall.com
+    - cherif.lawani@hendall.com
+    - cherif.lawani@hendall.com
+    - cherif.lawani@hendall.com
+    - cherif.lawani@hendall.com	
+  Team:
+    Description: Line of business
+    Type: String
+    Default: CLOUDADMIN
+    AllowedValues:
+    - DBA
+    - DEVOPS
+    - SYSADMIN
+    - CLOUDADMIN   
+  Offhours:
+    Description: If the resource will run after hours
+    Type: String
+    Default: false    
+    AllowedValues:
+    - true
+    - false  
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.xlarge
+    AllowedValues:
+    - t2.large
+    - t2.xlarge
+    - t2.medium    
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.	 
+   
+Resources:         
+# instances creation
+  Web01EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - sg-0a0c469d1a9e2b0c6
+        - sg-0b609fbea366ae791
+      KeyName: !Ref KeyName
+      ImageId: 'ami-0b38e0febcbaf3c33'      
+      SubnetId: subnet-0e78152975a7fbf0e      
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis.web-01.${EnvironmentName}.ec2'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'    
+        - Key: Offhours
+          Value: !Sub '${Offhours}'            
+  App01EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - sg-0a0c469d1a9e2b0c6
+        - sg-04fc2032bc8488985
+        - sg-016c69511b79a5d29        
+      KeyName: !Ref KeyName
+      ImageId: 'ami-0b38e0febcbaf3c33'      
+      SubnetId: subnet-066c02a99f9418d35      
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis.app-01.${EnvironmentName}.ec2'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'  
+        - Key: Offhours
+          Value: !Sub '${Offhours}'           
+  App02EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - sg-0a0c469d1a9e2b0c6
+        - sg-04fc2032bc8488985
+        - sg-016c69511b79a5d29        
+      KeyName: !Ref KeyName
+      ImageId: 'ami-0b38e0febcbaf3c33'      
+      SubnetId: subnet-04d514b63fa8cf4cb      
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis.app-02.${EnvironmentName}.ec2'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}' 
+        - Key: Offhours
+          Value: !Sub '${Offhours}'           
+  App03EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - sg-0a0c469d1a9e2b0c6
+        - sg-04fc2032bc8488985
+        - sg-016c69511b79a5d29        
+      KeyName: !Ref KeyName
+      ImageId: 'ami-0b38e0febcbaf3c33'      
+      SubnetId: subnet-04d514b63fa8cf4cb      
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis.app-03.${EnvironmentName}.ec2'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}' 
+        - Key: Offhours
+          Value: !Sub '${Offhours}'           
+  ldap01EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - sg-0a0c469d1a9e2b0c6
+        - sg-017b4150c2b8920e7      
+      KeyName: !Ref KeyName
+      ImageId: 'ami-0b38e0febcbaf3c33'      
+      SubnetId: subnet-04d514b63fa8cf4cb      
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis.ldap-01.${EnvironmentName}.ec2'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'  
+        - Key: Offhours
+          Value: !Sub '${Offhours}'           
+
+#ALB
+  ALBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: security group for ALB
+      GroupName: !Sub 'bhsis-alb-${EnvironmentName}-sg'
+      VpcId: vpc-075b672d3d40d4d6e
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'   
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bhsis-alb-${EnvironmentName}-sg'
+        - Key: POC
+          Value: !Sub '${POC}'  
+        - Key: Team
+          Value: !Sub '${Team}' 
+        - Key: Environment
+          Value: !Sub '${EnvironmentName}'
+  ApplicationLoadBalancer:
+      Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+      Properties:
+          Name: "test-Application-Load-Balancer"
+          Scheme: "internet-facing"
+          Type: "application"
+          Subnets: 
+            - subnet-040428dca0aa01317
+            - subnet-0c26e06b83f7941bc
+          SecurityGroups: 
+            - !Ref ALBSecurityGroup
+          IpAddressType: "ipv4"
+          LoadBalancerAttributes: 
+            - 
+              Key: "access_logs.s3.enabled"
+              Value: "false"
+            - 
+              Key: "idle_timeout.timeout_seconds"
+              Value: "60"
+            - 
+              Key: "deletion_protection.enabled"
+              Value: "false"
+            - 
+              Key: "routing.http2.enabled"
+              Value: "true"
+            - 
+              Key: "routing.http.drop_invalid_header_fields.enabled"
+              Value: "false"
+
+  HTTPSListener:
+      Type: "AWS::ElasticLoadBalancingV2::Listener"
+      Properties:
+          LoadBalancerArn: !Ref ApplicationLoadBalancer
+          Port: 443
+          Protocol: "HTTPS"
+          SslPolicy: "ELBSecurityPolicy-2016-08"
+          Certificates: 
+            - 
+              CertificateArn: arn:aws:acm:us-east-1:896451486235:certificate/e6d46383-6874-448f-832f-71f55135b05f
+              
+          DefaultActions: 
+            - 
+              Order: 1
+              TargetGroupArn: !Ref QAALBTargetGroup
+              Type: "forward"
+  HTTPListener:
+      Type: "AWS::ElasticLoadBalancingV2::Listener"
+      Properties:
+          LoadBalancerArn: !Ref ApplicationLoadBalancer
+          Port: 80
+          Protocol: "HTTP"
+          DefaultActions: 
+            - 
+              Order: 1
+              RedirectConfig: 
+                  Protocol: "HTTPS"
+                  Port: "443"
+                  Host: "#{host}"
+                  Path: "/#{path}"
+                  Query: "#{query}"
+                  StatusCode: "HTTP_301"
+              Type: "redirect"
+              
+  QAALBTargetGroup:
+      Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+      Properties:
+          HealthCheckIntervalSeconds: 30
+          HealthCheckPath: "/"
+          Port: 80
+          Protocol: "HTTP"
+          HealthCheckPort: "traffic-port"
+          HealthCheckProtocol: "HTTP"
+          HealthCheckTimeoutSeconds: 5
+          UnhealthyThresholdCount: 2
+          TargetType: "instance"
+          Matcher: 
+              HttpCode: "200"
+          HealthyThresholdCount: 5
+          VpcId: vpc-075b672d3d40d4d6e
+          Name: "target-group-1"
+          HealthCheckEnabled: true
+          TargetGroupAttributes: 
+            - 
+              Key: "stickiness.enabled"
+              Value: "false"
+            - 
+              Key: "deregistration_delay.timeout_seconds"
+              Value: "300"
+            - 
+              Key: "stickiness.type"
+              Value: "lb_cookie"
+            - 
+              Key: "stickiness.lb_cookie.duration_seconds"
+              Value: "86400"
+            - 
+              Key: "slow_start.duration_seconds"
+              Value: "0"
+            - 
+              Key: "load_balancing.algorithm.type"
+              Value: "round_robin"
+  QAALB2TargetGroup:
+      Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+      Properties:
+          HealthCheckIntervalSeconds: 30
+          HealthCheckPath: "/"
+          Port: 80
+          Protocol: "HTTP"
+          HealthCheckPort: "traffic-port"
+          HealthCheckProtocol: "HTTP"
+          HealthCheckTimeoutSeconds: 5
+          UnhealthyThresholdCount: 2
+          TargetType: "instance"
+          Matcher: 
+              HttpCode: "200"
+          HealthyThresholdCount: 5
+          VpcId: vpc-075b672d3d40d4d6e
+          Name: "target-group-2"
+          HealthCheckEnabled: true
+          TargetGroupAttributes: 
+            - 
+              Key: "stickiness.enabled"
+              Value: "false"
+            - 
+              Key: "deregistration_delay.timeout_seconds"
+              Value: "300"
+            - 
+              Key: "stickiness.type"
+              Value: "lb_cookie"
+            - 
+              Key: "stickiness.lb_cookie.duration_seconds"
+              Value: "86400"
+            - 
+              Key: "slow_start.duration_seconds"
+              Value: "0"
+            - 
+              Key: "load_balancing.algorithm.type"
+              Value: "round_robin"
+             
+  QAListenerRule1:
+      Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+      Properties:
+          Priority: "1"
+          ListenerArn: !Ref HTTPSListener
+          Conditions: 
+            - 
+              Field: "host-header"
+              Values: 
+                - "test1.blog.avrcr.com"
+          Actions: 
+            - 
+              Type: "forward"
+              TargetGroupArn: !Ref QAALBTargetGroup
+              Order: 1
+              ForwardConfig: 
+                  TargetGroups: 
+                    - 
+                      TargetGroupArn: !Ref QAALBTargetGroup
+                      Weight: 1
+                  TargetGroupStickinessConfig: 
+                      Enabled: false
+  QAListenerRule2:
+      Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+      Properties:
+          Priority: "2"
+          ListenerArn: !Ref HTTPSListener
+          Conditions: 
+            - 
+              Field: "host-header"
+              Values: 
+                - "test2.blog.com"
+          Actions: 
+            - 
+              Type: "forward"
+              TargetGroupArn: !Ref QAALB2TargetGroup
+              Order: 1
+              ForwardConfig: 
+                  TargetGroups: 
+                    - 
+                      TargetGroupArn: !Ref QAALB2TargetGroup
+                      Weight: 1
+                  TargetGroupStickinessConfig: 
+                      Enabled: false          
+  
